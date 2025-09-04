@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Practice Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container">
+                <h1 class="app-title">Interview Practice Assistant</h1>
+                <div class="header-stats">
+                    <span class="stats-item" id="session-stats"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Landing Page / Mode Selection -->
+            <section id="landing-page" class="screen active">
+                <div class="container">
+                    <div class="landing-content">
+                        <h2>Choose Your Practice Mode</h2>
+                        <p class="landing-description">Prepare for your next interview with our comprehensive question bank and interactive practice modes.</p>
+                        
+                        <div class="mode-grid">
+                            <div class="mode-card" data-mode="random">
+                                <div class="mode-icon">🎲</div>
+                                <h3>Random Questions</h3>
+                                <p>Practice with randomly selected questions from all categories</p>
+                                <div class="mode-stats">28 Questions Available</div>
+                            </div>
+                            
+                            <div class="mode-card" data-mode="category">
+                                <div class="mode-icon">📂</div>
+                                <h3>Category Practice</h3>
+                                <p>Focus on specific interview question categories</p>
+                                <div class="mode-stats">7 Categories</div>
+                            </div>
+                            
+                            <div class="mode-card" data-mode="mock">
+                                <div class="mode-icon">🎯</div>
+                                <h3>Mock Interview</h3>
+                                <p>Simulate a complete interview with 8-10 questions</p>
+                                <div class="mode-stats">Full Experience</div>
+                            </div>
+                            
+                            <div class="mode-card" data-mode="timed">
+                                <div class="mode-icon">⏱️</div>
+                                <h3>Timed Practice</h3>
+                                <p>Practice with time constraints to improve response speed</p>
+                                <div class="mode-stats">Customizable Timer</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Category Selection -->
+            <section id="category-selection" class="screen">
+                <div class="container">
+                    <div class="screen-header">
+                        <button class="btn btn--outline" id="back-to-landing">← Back to Modes</button>
+                        <h2>Select Categories</h2>
+                    </div>
+                    
+                    <div class="category-grid" id="category-grid">
+                        <!-- Categories will be populated by JavaScript -->
+                    </div>
+                    
+                    <div class="selection-actions">
+                        <button class="btn btn--secondary" id="select-all-categories">Select All</button>
+                        <button class="btn btn--primary" id="start-category-practice">Start Practice</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timer Selection -->
+            <section id="timer-selection" class="screen">
+                <div class="container">
+                    <div class="screen-header">
+                        <button class="btn btn--outline" id="back-to-landing-timer">← Back to Modes</button>
+                        <h2>Set Practice Timer</h2>
+                    </div>
+                    
+                    <div class="timer-options">
+                        <div class="timer-card" data-time="30">
+                            <div class="timer-duration">30 seconds</div>
+                            <div class="timer-description">Quick responses</div>
+                        </div>
+                        <div class="timer-card" data-time="60">
+                            <div class="timer-duration">1 minute</div>
+                            <div class="timer-description">Standard practice</div>
+                        </div>
+                        <div class="timer-card" data-time="120">
+                            <div class="timer-duration">2 minutes</div>
+                            <div class="timer-description">Detailed responses</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn--primary" id="start-timed-practice">Start Timed Practice</button>
+                </div>
+            </section>
+
+            <!-- Practice Session -->
+            <section id="practice-session" class="screen">
+                <div class="container practice-container">
+                    <!-- Session Header -->
+                    <div class="session-header">
+                        <div class="session-controls">
+                            <button class="btn btn--outline" id="end-session">← End Session</button>
+                            <div class="session-mode" id="current-mode">Random Practice</div>
+                        </div>
+                        
+                        <div class="session-progress">
+                            <div class="progress-info">
+                                <span id="question-counter">Question 1 of 28</span>
+                                <span class="question-category" id="question-category">Personal Background</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="session-timer" id="session-timer" style="display: none;">
+                            <div class="timer-display" id="timer-display">2:00</div>
+                            <div class="timer-status" id="timer-status">Remaining</div>
+                        </div>
+                    </div>
+
+                    <!-- Question Display -->
+                    <div class="question-section">
+                        <div class="question-card">
+                            <div class="question-header">
+                                <div class="question-actions">
+                                    <button class="action-btn" id="favorite-btn" title="Add to favorites">
+                                        <span class="action-icon">☆</span>
+                                    </button>
+                                    <button class="action-btn" id="difficulty-btn" title="Rate difficulty">
+                                        <span class="action-icon">★</span>
+                                        <span class="difficulty-rating" id="difficulty-rating">Rate</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="question-content">
+                                <h3 class="question-text" id="question-text">Tell me about yourself.</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Answer Section -->
+                    <div class="answer-section">
+                        <div class="answer-tabs">
+                            <button class="tab-btn active" data-tab="practice">Practice Answer</button>
+                            <button class="tab-btn" data-tab="sample">Sample Answer</button>
+                            <button class="tab-btn" data-tab="notes">Notes</button>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <!-- Practice Tab -->
+                            <div class="tab-pane active" id="practice-tab">
+                                <div class="practice-controls">
+                                    <div class="recording-simulation">
+                                        <button class="record-btn" id="record-btn">
+                                            <span class="record-icon">🎤</span>
+                                            <span class="record-text">Start Recording</span>
+                                        </button>
+                                        <div class="recording-timer" id="recording-timer" style="display: none;">
+                                            <span class="recording-dot"></span>
+                                            <span id="recording-time">00:00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <textarea 
+                                    class="form-control answer-input" 
+                                    id="answer-input" 
+                                    placeholder="Type your answer here or use the recording feature above..."
+                                    rows="8">
+                                </textarea>
+                            </div>
+                            
+                            <!-- Sample Answer Tab -->
+                            <div class="tab-pane" id="sample-tab">
+                                <div class="sample-answer" id="sample-answer">
+                                    <!-- Sample answer will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            
+                            <!-- Notes Tab -->
+                            <div class="tab-pane" id="notes-tab">
+                                <textarea 
+                                    class="form-control notes-input" 
+                                    id="notes-input" 
+                                    placeholder="Add your notes, thoughts, or reminders about this question..."
+                                    rows="8">
+                                </textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="navigation-section">
+                        <div class="nav-controls">
+                            <button class="btn btn--outline" id="prev-btn" disabled>← Previous</button>
+                            <button class="btn btn--secondary" id="skip-btn">Skip Question</button>
+                            <button class="btn btn--primary" id="next-btn">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Session Summary -->
+            <section id="session-summary" class="screen">
+                <div class="container">
+                    <div class="summary-content">
+                        <div class="summary-header">
+                            <h2>🎉 Practice Session Complete!</h2>
+                            <p class="summary-description">Great job! Here's how you performed in this session.</p>
+                        </div>
+                        
+                        <div class="summary-stats">
+                            <div class="stat-card">
+                                <div class="stat-value" id="total-questions">0</div>
+                                <div class="stat-label">Questions Practiced</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="session-time">0</div>
+                                <div class="stat-label">Time Spent</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="favorites-count">0</div>
+                                <div class="stat-label">Questions Favorited</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="notes-count">0</div>
+                                <div class="stat-label">Notes Added</div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-actions">
+                            <button class="btn btn--outline" id="review-session">Review Questions</button>
+                            <button class="btn btn--primary" id="start-new-session">Start New Session</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Difficulty Rating Modal -->
+        <div class="modal hidden" id="difficulty-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Rate Question Difficulty</h3>
+                    <button class="modal-close" id="close-difficulty-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>How difficult was this question for you?</p>
+                    <div class="star-rating" id="star-rating">
+                        <span class="star" data-rating="1">★</span>
+                        <span class="star" data-rating="2">★</span>
+                        <span class="star" data-rating="3">★</span>
+                        <span class="star" data-rating="4">★</span>
+                        <span class="star" data-rating="5">★</span>
+                    </div>
+                    <div class="rating-labels">
+                        <span>Very Easy</span>
+                        <span>Very Hard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
