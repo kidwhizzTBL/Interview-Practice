@@ -184,6 +184,19 @@ class InterviewApp {
         ];
 
         this.state = {
+        isTranscribing: false,
+        speechRecognition: null,
+        transcriptBuffer: '',
+
+
+isRecording: false,
+recordingStartTime: null,
+recordingInterval: null,
+mediaStream: null,
+mediaRecorder: null,
+audioChunks: [],
+audioUrl: null,
+
             currentScreen: 'landing-page',
             practiceMode: null,
             selectedCategories: [],
@@ -196,8 +209,9 @@ class InterviewApp {
                 notes: {},
                 favorites: new Set(),
                 difficulties: {},
-                completed: new Set()
-            },
+                completed: new Set(),
+                recordings: {}
+},
             timerInterval: null,
             recordingInterval: null,
             isRecording: false,
@@ -227,7 +241,15 @@ class InterviewApp {
         });
 
         // Navigation buttons - use event delegation to ensure they work
-        document.addEventListener('click', (e) => {
+        \1
+
+// Delegated handler so the entire card (and its children) are clickable
+const modeCard = e.target.closest('.mode-card');
+if (modeCard && modeCard.dataset && modeCard.dataset.mode) {
+    e.preventDefault();
+    this.selectMode(modeCard.dataset.mode);
+    return;
+}
             if (e.target.id === 'back-to-landing' || e.target.closest('#back-to-landing')) {
                 e.preventDefault();
                 this.showScreen('landing-page');
@@ -378,7 +400,7 @@ class InterviewApp {
         }
 
         // Navigate based on mode
-        setTimeout(() => {
+        setTimeout(() => { window.scrollTo({top:0, behavior:'smooth'});
             switch(mode) {
                 case 'random':
                     this.prepareRandomQuestions();
@@ -547,6 +569,13 @@ class InterviewApp {
         
         // Load saved data for this question
         this.loadQuestionData(question.id);
+        // Sync notes UI with saved transcript/notes
+        try {
+            const notesInput = document.getElementById('notes-input');
+            if (notesInput) {
+                notesInput.value = this.state.sessionData.notes[question.id] || '';
+            }
+        } catch(e) { console.warn('Notes sync skipped:', e); }
         
         // Update navigation buttons
         const prevBtn = document.getElementById('prev-btn');
@@ -566,7 +595,31 @@ class InterviewApp {
 
         // Make sure we're on the practice tab
         this.switchTab('practice');
+    
+
+// Load saved recording for this question, if any
+try {
+    const questionId = question.id;
+    const url = this.state.sessionData?.recordings?.[questionId];
+    const playback = document.getElementById('recording-playback');
+    const download = document.getElementById('recording-download');
+    if (playback && download) {
+        if (url) {
+            playback.src = url;
+            playback.style.display = 'block';
+            download.href = url;
+            download.style.display = 'inline-block';
+        } else {
+            playback.removeAttribute('src');
+            playback.style.display = 'none';
+            download.removeAttribute('href');
+            download.style.display = 'none';
+        }
     }
+} catch (e) {
+    console.warn('Recording restore skipped:', e);
+}
+}
 
     updateProgress() {
         const current = this.state.currentQuestionIndex + 1;
@@ -770,40 +823,225 @@ class InterviewApp {
         console.log('Tab switched to:', tabName);
     }
 
-    toggleRecording() {
-        const recordBtn = document.getElementById('record-btn');
-        const recordText = recordBtn?.querySelector('.record-text');
-        const recordingTimer = document.getElementById('recording-timer');
-        const recordingTime = document.getElementById('recording-time');
-        
-        if (!recordBtn || !recordText || !recordingTimer || !recordingTime) return;
-        
-        if (!this.state.isRecording) {
-            // Start recording
-            this.state.isRecording = true;
-            this.state.recordingStartTime = Date.now();
-            recordBtn.classList.add('recording');
-            recordText.textContent = 'Stop Recording';
-            recordingTimer.style.display = 'flex';
-            
-            this.state.recordingInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                const minutes = Math.floor(elapsed / 60);
-                const seconds = elapsed % 60;
-                recordingTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
-        } else {
-            // Stop recording
-            this.state.isRecording = false;
-            recordBtn.classList.remove('recording');
-            recordText.textContent = 'Start Recording';
-            recordingTimer.style.display = 'none';
-            
-            if (this.state.recordingInterval) {
-                clearInterval(this.state.recordingInterval);
+    
+toggleRecording() {
+    this.hideRecordingError();
+
+    const supportsMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    if (!supportsMedia) {
+        this.showRecordingError('This browser does not support microphone recording. Try Chrome, Edge, or Firefox.');
+        return;
+    }
+
+    if (!this.state.isRecording) {
+        // Start recording
+        (async () => {
+            try {
+                await this.ensureMic();
+
+                const preferred = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/ogg;codecs=opus',
+                    'audio/ogg'
+                ];
+                let mime = '';
+                for (const m of preferred) {
+                    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) {
+                        mime = m; break;
+                    }
+                }
+
+                this.state.mediaRecorder = new MediaRecorder(this.state.mediaStream, mime ? { mimeType: mime } : undefined);
+                this.attachRecorderHandlers();
+
+                this.state.isRecording = true;
+                this.updateRecordingTimerUI(true);
+                this.state.mediaRecorder.start();
+
+            } catch (err) {
+                console.error('Failed to start recording', err);
+                this.showRecordingError('Unable to start recording. Check mic permissions/settings.');
             }
+        })();
+        return;
+    }
+
+    // Stop recording
+    try {
+        this.state.isRecording = false;
+        this.updateRecordingTimerUI(false);
+        if (this.state.mediaRecorder && this.state.mediaRecorder.state !== 'inactive') {
+            this.state.mediaRecorder.stop();
+        }
+    } catch (err) {
+        console.error('Failed to stop recording', err);
+        this.showRecordingError('Unable to stop recording cleanly.');
+    }
+}
+
+
+
+async ensureMic() {
+    if (this.state.mediaStream && this.state.mediaStream.active) return;
+    try {
+        this.state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+        this.showRecordingError('Microphone access denied or unavailable. Please allow mic permissions and try again.');
+        throw err;
+    }
+}
+
+attachRecorderHandlers() {
+    const playback = document.getElementById('recording-playback');
+    const download = document.getElementById('recording-download');
+
+    this.state.audioChunks = [];
+    this.state.mediaRecorder.addEventListener('dataavailable', (ev) => {
+        if (ev.data && ev.data.size > 0) this.state.audioChunks.push(ev.data);
+    });
+
+    this.state.mediaRecorder.addEventListener('stop', () => {
+        const blob = new Blob(this.state.audioChunks, { type: this.state.mediaRecorder.mimeType || 'audio/webm' });
+        if (this.state.audioUrl) URL.revokeObjectURL(this.state.audioUrl);
+        this.state.audioUrl = URL.createObjectURL(blob);
+
+        const q = this.state.questionsForSession[this.state.currentQuestionIndex];
+        if (q) {
+            if (!this.state.sessionData.recordings) this.state.sessionData.recordings = {};
+            this.state.sessionData.recordings[q.id] = this.state.audioUrl;
+        }
+
+        if (playback) {
+            playback.src = this.state.audioUrl;
+            playback.style.display = 'block';
+        }
+        if (download) {
+            download.href = this.state.audioUrl;
+            download.style.display = 'inline-block';
+        }
+    });
+}
+
+showRecordingError(msg) {
+    const box = document.getElementById('recording-error');
+    if (box) {
+        box.textContent = msg;
+        box.style.display = 'block';
+    } else {
+        alert(msg);
+    }
+}
+
+hideRecordingError() {
+    const box = document.getElementById('recording-error');
+    if (box) box.style.display = 'none';
+}
+
+updateRecordingTimerUI(running) {
+    const recordBtn = document.getElementById('record-btn');
+    const recordText = recordBtn?.querySelector('.record-text');
+    const recordingTimer = document.getElementById('recording-timer');
+    const recordingTime = document.getElementById('recording-time');
+
+    if (!recordBtn || !recordText || !recordingTimer || !recordingTime) return;
+
+    if (running) {
+        recordBtn.classList.add('recording');
+        recordText.textContent = 'Stop Recording';
+        recordingTimer.style.display = 'flex';
+        this.state.recordingStartTime = Date.now();
+        if (this.state.recordingInterval) clearInterval(this.state.recordingInterval);
+        this.state.recordingInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+            const mm = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const ss = (elapsed % 60).toString().padStart(2, '0');
+            recordingTime.textContent = `${mm}:${ss}`;
+        }, 1000);
+    } else {
+        recordBtn.classList.remove('recording');
+        recordText.textContent = 'Start Recording';
+        recordingTimer.style.display = 'none';
+        if (this.state.recordingInterval) clearInterval(this.state.recordingInterval);
+    }
+}
+
+cleanupMediaTracks() {
+    if (this.state.mediaStream) {
+        this.state.mediaStream.getTracks().forEach(t => t.stop());
+        this.state.mediaStream = null;
+    }
+}
+
+
+// === Speech-to-Text (Web Speech API) ===
+startTranscription() {
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn('SpeechRecognition API not supported in this browser.');
+            return;
+        }
+        if (this.state.isTranscribing) return;
+
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = navigator.language || 'en-US';
+
+        rec.onresult = (event) => {
+            let finalChunk = '';
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const res = event.results[i];
+                if (res.isFinal) {
+                    finalChunk += res[0].transcript + ' ';
+                } else {
+                    interim += res[0].transcript;
+                }
+            }
+            if (finalChunk) {
+                this.appendTranscript(finalChunk);
+            }
+        };
+
+        rec.onerror = (e) => {
+            console.warn('SpeechRecognition error:', e.error);
+        };
+        rec.onend = () => {
+            if (this.state.isRecording && this.state.isTranscribing) {
+                try { rec.start(); } catch (_) {}
+            }
+        };
+
+        this.state.speechRecognition = rec;
+        this.state.isTranscribing = true;
+        rec.start();
+    } catch (err) {
+        console.warn('Failed to start transcription:', err);
+    }
+}
+
+stopTranscription() {
+    this.state.isTranscribing = false;
+    try {
+        this.state.speechRecognition && this.state.speechRecognition.stop();
+    } catch (e) {}
+    this.state.speechRecognition = null;
+}
+
+appendTranscript(text) {
+    const notesInput = document.getElementById('notes-input');
+    const q = this.state.questionsForSession[this.state.currentQuestionIndex];
+    if (q) {
+        const existing = this.state.sessionData.notes[q.id] || '';
+        const merged = (existing && !existing.endsWith(' ') ? existing + ' ' : existing) + text.trim() + ' ';
+        this.state.sessionData.notes[q.id] = merged;
+        if (notesInput) {
+            notesInput.value = merged;
         }
     }
+}
 
     showDifficultyModal() {
         const modal = document.getElementById('difficulty-modal');
@@ -872,6 +1110,7 @@ class InterviewApp {
             clearInterval(this.state.recordingInterval);
         }
         
+        this.cleanupMediaTracks();
         this.showSessionSummary();
     }
 
@@ -943,11 +1182,24 @@ class InterviewApp {
             clearInterval(this.state.timerInterval);
         }
         if (this.state.recordingInterval) {
-            clearInterval(this.state.recordingInterval);
+            clearInterval(
+        isTranscribing: false,
+        speechRecognition: null,
+        transcriptBuffer: '',
+this.state.recordingInterval);
         }
         
         // Reset state
         this.state = {
+
+isRecording: false,
+recordingStartTime: null,
+recordingInterval: null,
+mediaStream: null,
+mediaRecorder: null,
+audioChunks: [],
+audioUrl: null,
+
             currentScreen: 'landing-page',
             practiceMode: null,
             selectedCategories: [],
@@ -960,8 +1212,9 @@ class InterviewApp {
                 notes: {},
                 favorites: new Set(),
                 difficulties: {},
-                completed: new Set()
-            },
+                completed: new Set(),
+                recordings: {}
+},
             timerInterval: null,
             recordingInterval: null,
             isRecording: false,

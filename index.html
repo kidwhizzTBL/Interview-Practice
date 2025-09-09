@@ -28,28 +28,28 @@
                         <p class="landing-description">Prepare for your next interview with our comprehensive question bank and interactive practice modes.</p>
                         
                         <div class="mode-grid">
-                            <div class="mode-card" data-mode="random">
+                            <div class="mode-card" data-mode="random" role="button" tabindex="0">
                                 <div class="mode-icon">🎲</div>
                                 <h3>Random Questions</h3>
                                 <p>Practice with randomly selected questions from all categories</p>
                                 <div class="mode-stats">28 Questions Available</div>
                             </div>
                             
-                            <div class="mode-card" data-mode="category">
+                            <div class="mode-card" data-mode="category" role="button" tabindex="0">
                                 <div class="mode-icon">📂</div>
                                 <h3>Category Practice</h3>
                                 <p>Focus on specific interview question categories</p>
                                 <div class="mode-stats">7 Categories</div>
                             </div>
                             
-                            <div class="mode-card" data-mode="mock">
+                            <div class="mode-card" data-mode="mock" role="button" tabindex="0">
                                 <div class="mode-icon">🎯</div>
                                 <h3>Mock Interview</h3>
                                 <p>Simulate a complete interview with 8-10 questions</p>
                                 <div class="mode-stats">Full Experience</div>
                             </div>
                             
-                            <div class="mode-card" data-mode="timed">
+                            <div class="mode-card" data-mode="timed" role="button" tabindex="0">
                                 <div class="mode-icon">⏱️</div>
                                 <h3>Timed Practice</h3>
                                 <p>Practice with time constraints to improve response speed</p>
@@ -165,16 +165,20 @@
                             <!-- Practice Tab -->
                             <div class="tab-pane active" id="practice-tab">
                                 <div class="practice-controls">
-                                    <div class="recording-simulation">
-                                        <button class="record-btn" id="record-btn">
-                                            <span class="record-icon">🎤</span>
-                                            <span class="record-text">Start Recording</span>
-                                        </button>
-                                        <div class="recording-timer" id="recording-timer" style="display: none;">
-                                            <span class="recording-dot"></span>
-                                            <span id="recording-time">00:00</span>
-                                        </div>
-                                    </div>
+                                    <div class="recording-simulation" id="recording-ui">
+    <button class="record-btn" id="record-btn" type="button">
+        <span class="record-icon" aria-hidden="true">🎤</span>
+        <span class="record-text">Start Recording</span>
+    </button>
+    <div class="recording-timer" id="recording-timer" style="display: none;">
+        <span class="recording-dot"></span>
+        <span id="recording-time">00:00</span>
+    </div>
+    <audio id="recording-playback" controls style="display:none; width:100%; margin-top:8px;"></audio>
+    <a id="recording-download" class="btn btn--outline btn--sm" style="display:none; margin-top:8px;" download="answer.webm">Download Recording</a>
+    <div id="recording-error" class="error-text" style="display:none; margin-top:8px; color:#b91c1c;" aria-live="polite"></div>
+</div>
+</div>
                                 </div>
                                 
                                 <textarea 
