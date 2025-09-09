@@ -184,10 +184,6 @@ class InterviewApp {
         ];
 
         this.state = {
-        isTranscribing: false,
-        speechRecognition: null,
-        transcriptBuffer: '',
-
 
 isRecording: false,
 recordingStartTime: null,
@@ -241,15 +237,7 @@ audioUrl: null,
         });
 
         // Navigation buttons - use event delegation to ensure they work
-        \1
-
-// Delegated handler so the entire card (and its children) are clickable
-const modeCard = e.target.closest('.mode-card');
-if (modeCard && modeCard.dataset && modeCard.dataset.mode) {
-    e.preventDefault();
-    this.selectMode(modeCard.dataset.mode);
-    return;
-}
+        document.addEventListener('click', (e) => {
             if (e.target.id === 'back-to-landing' || e.target.closest('#back-to-landing')) {
                 e.preventDefault();
                 this.showScreen('landing-page');
@@ -400,7 +388,7 @@ if (modeCard && modeCard.dataset && modeCard.dataset.mode) {
         }
 
         // Navigate based on mode
-        setTimeout(() => { window.scrollTo({top:0, behavior:'smooth'});
+        setTimeout(() => {
             switch(mode) {
                 case 'random':
                     this.prepareRandomQuestions();
@@ -569,13 +557,6 @@ if (modeCard && modeCard.dataset && modeCard.dataset.mode) {
         
         // Load saved data for this question
         this.loadQuestionData(question.id);
-        // Sync notes UI with saved transcript/notes
-        try {
-            const notesInput = document.getElementById('notes-input');
-            if (notesInput) {
-                notesInput.value = this.state.sessionData.notes[question.id] || '';
-            }
-        } catch(e) { console.warn('Notes sync skipped:', e); }
         
         // Update navigation buttons
         const prevBtn = document.getElementById('prev-btn');
@@ -973,76 +954,6 @@ cleanupMediaTracks() {
     }
 }
 
-
-// === Speech-to-Text (Web Speech API) ===
-startTranscription() {
-    try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            console.warn('SpeechRecognition API not supported in this browser.');
-            return;
-        }
-        if (this.state.isTranscribing) return;
-
-        const rec = new SpeechRecognition();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = navigator.language || 'en-US';
-
-        rec.onresult = (event) => {
-            let finalChunk = '';
-            let interim = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const res = event.results[i];
-                if (res.isFinal) {
-                    finalChunk += res[0].transcript + ' ';
-                } else {
-                    interim += res[0].transcript;
-                }
-            }
-            if (finalChunk) {
-                this.appendTranscript(finalChunk);
-            }
-        };
-
-        rec.onerror = (e) => {
-            console.warn('SpeechRecognition error:', e.error);
-        };
-        rec.onend = () => {
-            if (this.state.isRecording && this.state.isTranscribing) {
-                try { rec.start(); } catch (_) {}
-            }
-        };
-
-        this.state.speechRecognition = rec;
-        this.state.isTranscribing = true;
-        rec.start();
-    } catch (err) {
-        console.warn('Failed to start transcription:', err);
-    }
-}
-
-stopTranscription() {
-    this.state.isTranscribing = false;
-    try {
-        this.state.speechRecognition && this.state.speechRecognition.stop();
-    } catch (e) {}
-    this.state.speechRecognition = null;
-}
-
-appendTranscript(text) {
-    const notesInput = document.getElementById('notes-input');
-    const q = this.state.questionsForSession[this.state.currentQuestionIndex];
-    if (q) {
-        const existing = this.state.sessionData.notes[q.id] || '';
-        const merged = (existing && !existing.endsWith(' ') ? existing + ' ' : existing) + text.trim() + ' ';
-        this.state.sessionData.notes[q.id] = merged;
-        if (notesInput) {
-            notesInput.value = merged;
-        }
-    }
-}
-
     showDifficultyModal() {
         const modal = document.getElementById('difficulty-modal');
         if (!modal) return;
@@ -1110,7 +1021,6 @@ appendTranscript(text) {
             clearInterval(this.state.recordingInterval);
         }
         
-        this.cleanupMediaTracks();
         this.showSessionSummary();
     }
 
@@ -1182,11 +1092,7 @@ appendTranscript(text) {
             clearInterval(this.state.timerInterval);
         }
         if (this.state.recordingInterval) {
-            clearInterval(
-        isTranscribing: false,
-        speechRecognition: null,
-        transcriptBuffer: '',
-this.state.recordingInterval);
+            clearInterval(this.state.recordingInterval);
         }
         
         // Reset state
